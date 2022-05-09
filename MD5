@@ -1,6 +1,6 @@
-15e37ef09e5ced537eea9d416d09b1be *DESCRIPTION
+d0ce8e112f07f6221d2939d702ce2b90 *DESCRIPTION
 e42c83c5f743950cc84fb2e4ab32e081 *NAMESPACE
-c420da85a8c0811ee7dee81399372d18 *NEWS.md
+bdc7fb93b2f614bfdf43f9167ecf05ba *NEWS.md
 056698e1e45246d66a2e94c649d3a671 *R/RcppExports.R
 f25525535bc8c06f544f1659037bbf7e *R/data.R
 2d281bf1b61c2b88856fe9ecdd187da4 *R/fdacluster-package.R
@@ -33,13 +33,13 @@ df548003c44eae9f61fca52324eca9ff *src/RcppExports.cpp
 455fb31f8437e1d4252bf06e12ab0273 *src/affineWarpingClass.cpp
 8e828d04dec27d8837748e83ced37c4c *src/affineWarpingClass.h
 ef22c98a91b13320f43f92b3dbc8b5d2 *src/baseDissimilarityClass.cpp
-a1c8ebce646fe475c8d0587ef8447d93 *src/baseOptimizerClass.cpp
+04e62316d0cefe17d532da5eadc01443 *src/baseOptimizerClass.cpp
 d1384270bc361f9d9d65563f647915dc *src/baseWarpingClass.cpp
 449b3a74e3e87ade5182043325ec0a77 *src/bobyqaOptimizerClass.cpp
 dc7c48ba1dde914c2d96573208bd2eef *src/bobyqaOptimizerClass.h
 ed23903f381a02a6813a2dc6c8e00d28 *src/dilationWarpingClass.cpp
 dbf23056ed04e2d64316572dc830a3c3 *src/dilationWarpingClass.h
-c4f6dcf887ad75b50aec7caaccd7f7cf *src/kmaModelClass.cpp
+ce433300b2bbc46ef279bbc644fe9f70 *src/kmaModelClass.cpp
 73228dca74d414e99343161f063b88c1 *src/kmaModelClass.h
 1954f5c48cbfa420955e486f407befe4 *src/kmap.cpp
 115040745529f7bd9142f9a0fe313a00 *src/kmap.h

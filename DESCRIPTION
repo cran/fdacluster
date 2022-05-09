@@ -1,6 +1,6 @@
 Package: fdacluster
 Title: Joint Clustering and Alignment of Functional Data
-Version: 0.1.0
+Version: 0.1.1
 Type: Package
 Authors@R: c(
     person(given = "Laura",
@@ -33,7 +33,9 @@ Description: Revisited clustering approaches to accommodate functional
     process. Currently, shift, dilation and affine transformations 
     only are available to perform alignment. The k-mean algorithm has 
     been extended to integrate alignment and is fully parallelized. 
-    Hierarchical clustering will soon be available as well.
+    Hierarchical clustering will soon be available as well. References: 
+    Sangalli L.M., Secchi P., Vantini S., Vitelli V. (2010) "k-mean 
+    alignment for curve clustering" <doi:10.1016/j.csda.2009.12.008>.
 License: GPL (>= 3)
 Encoding: UTF-8
 LazyData: true
@@ -45,7 +47,7 @@ Depends: R (>= 2.10)
 URL: https://astamm.github.io/fdacluster/index.html,
         https://github.com/astamm/fdacluster
 NeedsCompilation: yes
-Packaged: 2022-01-31 22:04:07 UTC; stamm-a
+Packaged: 2022-05-04 16:13:01 UTC; stamm-a
 Author: Laura Sangalli [aut],
   Piercesare Secchi [aut],
   Aymeric Stamm [cre, ctb] (<https://orcid.org/0000-0002-8725-3654>),
@@ -54,4 +56,4 @@ Author: Laura Sangalli [aut],
   Alessandro Zito [ctb]
 Maintainer: Aymeric Stamm <aymeric.stamm@math.cnrs.fr>
 Repository: CRAN
-Date/Publication: 2022-02-01 19:00:02 UTC
+Date/Publication: 2022-05-09 12:10:11 UTC
