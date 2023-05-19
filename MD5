@@ -1,6 +1,6 @@
-9430eb97ec5784e579c41eaf00507b0c *DESCRIPTION
+ae3438f01c53cb2b91bf32e3c8d95086 *DESCRIPTION
 38f795a1c89621a99ff7f61975375893 *NAMESPACE
-b112a18f8d1980fbe7ba19332918fa00 *NEWS.md
+2a0beeb675f7d5b0383f916284471571 *NEWS.md
 072484910937405c8fb2c0bece49b4b2 *R/RcppExports.R
 bf28c1d269a1ce15a540deebacdb37e8 *R/caps-class.R
 417f69fe9dc8ca986df27929157fdfa3 *R/caps-diagnostic.R
@@ -16,7 +16,7 @@ ecce3bef08943f2502e7df7716922827 *R/fdakmeans.R
 91d4f4ed8329ad31fc1724eb9b8efdd5 *R/sysdata.rda
 179c86c7efbbe3b57d4150a6b9f2e8d3 *R/utils.R
 ba5513ed7cadae901782cfe6fb722e50 *R/zzz.R
-f3cc7d02d2cdb89181c5ec3dce9f488d *README.md
+c1e0c87060a52f523c75c955f4b84524 *README.md
 439bf689fa27cf9affd0335332142165 *build/partial.rdb
 7dcee38c83f57c039e8488ae20fefa2d *build/vignette.rds
 bc4f5c6a260ef457b8c374566f6d7e53 *data/sim30_caps.rda
@@ -38,7 +38,7 @@ ba4c556fc9de0b7c6dfd8d9fe67273be *inst/include/sharedFactoryClass.hpp
 977ffdee7291d507291bddf3e0cdcae0 *man/caps.Rd
 72609efddd6d69d5de6563d16bc59002 *man/compare_caps.Rd
 84ccd2777fffcc66f042d8f1cf5fa24b *man/diagnostic_plot.Rd
-da219c4f1d13ecf13910348b3d649165 *man/fdacluster-package.Rd
+f8553f8838ffcd8a5a32c5a3a5d902b1 *man/fdacluster-package.Rd
 4a4df5d9528425cfb0889a85a8a6a220 *man/fdadbscan.Rd
 c3289a0fb28e6c56d6cedc0222d2d783 *man/fdadist.Rd
 ceeef611c6c8d44e9940caefb6d110de *man/fdahclust.Rd
@@ -73,7 +73,7 @@ d1384270bc361f9d9d65563f647915dc *src/baseWarpingClass.cpp
 dc7c48ba1dde914c2d96573208bd2eef *src/bobyqaOptimizerClass.h
 ed23903f381a02a6813a2dc6c8e00d28 *src/dilationWarpingClass.cpp
 dbf23056ed04e2d64316572dc830a3c3 *src/dilationWarpingClass.h
-3700299aaad24b0321785258141f35fa *src/kmaModelClass.cpp
+d6bf80048d07f18704492f1600832c64 *src/kmaModelClass.cpp
 dbaa5c159bf65cfcffbf879d0570aa83 *src/kmaModelClass.h
 51f5d948863411189f837ef76b05c3c5 *src/kmap.cpp
 0195ebf3ed5e05370ee3630ba8f48ed8 *src/kmap.h
