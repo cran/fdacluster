@@ -1,7 +1,6 @@
 Package: fdacluster
 Title: Joint Clustering and Alignment of Functional Data
-Version: 0.2.1
-Type: Package
+Version: 0.2.2
 Authors@R: c(
     person(given = "Aymeric",
            family = "Stamm",
@@ -49,17 +48,17 @@ LazyData: true
 LazyDataCompression: xz
 LinkingTo: Rcpp, RcppArmadillo, nloptr
 RoxygenNote: 7.2.3
-Suggests: fda, funData, future, knitr, rmarkdown, testthat (>= 3.0.0),
-        withr
+Suggests: fda, funData, future, knitr, rmarkdown, testthat (>= 3.0.0)
 Imports: cli, cluster, dbscan, dplyr, fdasrvf, forcats, furrr, ggplot2,
-        lpSolve, nloptr, progressr, purrr, Rcpp, rlang, tibble, tidyr
+        lpSolve, nloptr, progressr, purrr, Rcpp, rlang, tibble, tidyr,
+        withr
 Depends: R (>= 3.5.0)
 URL: https://astamm.github.io/fdacluster/index.html,
         https://github.com/astamm/fdacluster
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2023-05-18 22:58:58 UTC; stamm-a
+Packaged: 2023-05-24 09:52:29 UTC; stamm-a
 Author: Aymeric Stamm [aut, cre] (<https://orcid.org/0000-0002-8725-3654>),
   Laura Sangalli [ctb],
   Piercesare Secchi [ctb],
@@ -68,4 +67,4 @@ Author: Aymeric Stamm [aut, cre] (<https://orcid.org/0000-0002-8725-3654>),
   Alessandro Zito [ctb]
 Maintainer: Aymeric Stamm <aymeric.stamm@cnrs.fr>
 Repository: CRAN
-Date/Publication: 2023-05-19 14:00:02 UTC
+Date/Publication: 2023-05-25 10:20:02 UTC
