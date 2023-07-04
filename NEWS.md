@@ -1,3 +1,12 @@
+# fdacluster 0.3.0
+
+* Added median centroid type;
+* Median and mean centroid types are now defined on the union of individual grids;
+* Simplified `caps` class to avoid storing objects multiple times under different names;
+* Added vignette on initialization strategies for k-means;
+* Added article on use case about the Berkeley growth study;
+* Added article on supported input formats.
+
 # fdacluster 0.2.2
 
 * Make sure one can use **fdacluster** with namespace notation.

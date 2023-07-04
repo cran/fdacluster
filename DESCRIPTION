@@ -1,6 +1,6 @@
 Package: fdacluster
 Title: Joint Clustering and Alignment of Functional Data
-Version: 0.2.2
+Version: 0.3.0
 Authors@R: c(
     person(given = "Aymeric",
            family = "Stamm",
@@ -58,7 +58,7 @@ URL: https://astamm.github.io/fdacluster/index.html,
 Config/testthat/edition: 3
 VignetteBuilder: knitr
 NeedsCompilation: yes
-Packaged: 2023-05-24 09:52:29 UTC; stamm-a
+Packaged: 2023-07-04 13:32:12 UTC; stamm-a
 Author: Aymeric Stamm [aut, cre] (<https://orcid.org/0000-0002-8725-3654>),
   Laura Sangalli [ctb],
   Piercesare Secchi [ctb],
@@ -67,4 +67,4 @@ Author: Aymeric Stamm [aut, cre] (<https://orcid.org/0000-0002-8725-3654>),
   Alessandro Zito [ctb]
 Maintainer: Aymeric Stamm <aymeric.stamm@cnrs.fr>
 Repository: CRAN
-Date/Publication: 2023-05-25 10:20:02 UTC
+Date/Publication: 2023-07-04 15:53:04 UTC

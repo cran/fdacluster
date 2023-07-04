@@ -39,14 +39,15 @@
 #'   `"affine"`, `"dilation"`, `"none"`, `"shift"` or `"srsf"`. Defaults to
 #'   `"affine"`. The SRSF class is the only class which is boundary-preserving.
 #' @param centroid_type A string specifying the type of centroid to compute.
-#'   Choices are `"mean"`, `"medoid"`, `"lowess"` or `"poly"`. Defaults to
-#'   `"mean"`. If LOWESS appproximation is chosen, the user can append an
-#'   integer between 0 and 100 as in `"lowess20"`. This number will be used as
-#'   the smoother span. This gives the proportion of points in the plot which
-#'   influence the smooth at each value. Larger values give more smoothness. The
-#'   default value is 10%. If polynomial approximation is chosen, the user can
-#'   append an positive integer as in `"poly3"`. This number will be used as the
-#'   degree of the polynomial model. The default value is `4L`.
+#'   Choices are `"mean"`, `"median"` `"medoid"`, `"lowess"` or `"poly"`.
+#'   Defaults to `"mean"`. If LOWESS appproximation is chosen, the user can
+#'   append an integer between 0 and 100 as in `"lowess20"`. This number will be
+#'   used as the smoother span. This gives the proportion of points in the plot
+#'   which influence the smooth at each value. Larger values give more
+#'   smoothness. The default value is 10%. If polynomial approximation is
+#'   chosen, the user can append an positive integer as in `"poly3"`. This
+#'   number will be used as the degree of the polynomial model. The default
+#'   value is `4L`.
 #' @param metric A string specifying the metric used to compare curves. Choices
 #'   are `"l2"` or `"pearson"`. Defaults to `"l2"`. Used only when
 #'   `warping_class != "srsf"`. For the boundary-preserving warping class, the
@@ -88,10 +89,6 @@
 #' @param add_silhouettes A boolean specifying whether silhouette values should
 #'   be computed for each observation for internal validation of the clustering
 #'   structure. Defaults to `TRUE`.
-#' @param expand_domain A boolean specifying how to define the within-cluster
-#'   common grids. When set to `FALSE`, the intersection of the individual
-#'   domains is used. When set to `TRUE`, the union is used and mean imputation
-#'   is performed to fill in the missing values. Defaults to `TRUE`.
 #'
 #' @return An object of class [`caps`].
 #'
@@ -137,11 +134,10 @@ fdakmeans <- function(x, y = NULL,
                       use_fence = FALSE,
                       check_total_dissimilarity = TRUE,
                       compute_overall_center = FALSE,
-                      add_silhouettes = TRUE,
-                      expand_domain = TRUE) {
+                      add_silhouettes = TRUE) {
   call <- rlang::call_match(defaults = TRUE)
-  call_name <- rlang::call_name(call)
-  call_args <- rlang::call_args(call)
+  callname <- rlang::call_name(call)
+  callargs <- rlang::call_args(call)
 
   l <- format_inputs(x, y)
   x <- l$x
@@ -293,7 +289,11 @@ fdakmeans <- function(x, y = NULL,
     }
   }
 
-  call_args$seeds <- seeds
+  callargs$seeds <- seeds
+  callargs$seeding_strategy <- seeding_strategy
+  callargs$warping_class <- warping_class
+  callargs$metric <- metric
+
   seeds <- seeds - 1
 
   if (warping_class == "srsf") {
@@ -338,8 +338,9 @@ fdakmeans <- function(x, y = NULL,
     center_curves <- aperm(res$templates, c(3, 1, 2))
     warpings <- matrix(nrow = N, ncol = M)
     for (k in 1:n_clusters) {
-      aligned_curves[cluster_members[[k]], , ] <- t(res$fn[[k]])
-      warpings[cluster_members[[k]], ] <- t(res$gam[[k]])
+      Nc <- length(cluster_members[[k]])
+      aligned_curves[cluster_members[[k]], , ] <- aperm(array(res$fn[[k]], dim = c(L, M, Nc)), c(3, 1, 2))
+      warpings[cluster_members[[k]], ] <- t(apply(t(res$gam[[k]]), 1, fdasrvf::invertGamma)) * diff(range(common_grid)) + min(common_grid)
     }
 
     q0 <- res$q0
@@ -368,10 +369,10 @@ fdakmeans <- function(x, y = NULL,
 
     out <- list(
       original_curves = original_curves,
-      aligned_curves = aligned_curves,
+      original_grids = matrix(res$time, nrow = N, ncol = M, byrow = TRUE),
+      aligned_grids = warpings,
       center_curves = center_curves,
-      warpings = warpings,
-      grids = matrix(res$time, nrow = n_clusters, ncol = M, byrow = TRUE),
+      center_grids = matrix(res$time, nrow = n_clusters, ncol = M, byrow = TRUE),
       n_clusters = n_clusters,
       memberships = res$labels,
       distances_to_center = res$distances_to_center,
@@ -379,8 +380,8 @@ fdakmeans <- function(x, y = NULL,
       amplitude_variation = amplitude_variation,
       total_variation = total_variation,
       n_iterations = length(res$qun),
-      call_name = call_name,
-      call_args = call_args
+      call_name = callname,
+      call_args = callargs
     )
 
     return(as_caps(out))
@@ -410,84 +411,6 @@ fdakmeans <- function(x, y = NULL,
     )
   })
 
-  # Compute common grid per cluster
-  common_grids <- purrr::map(1:n_clusters, \(cluster_id) {
-    grids <- res$x_final[res$labels == cluster_id, , drop = FALSE]
-    common_grid <- grids[1, ]
-    if (nrow(grids) > 1) {
-      multiple_grids <- any(apply(grids, 2, stats::sd) != 0)
-      if (multiple_grids) {
-        if (expand_domain) {
-          grid_min <- min(grids[, 1])
-          grid_max <- max(grids[, M])
-        } else {
-          grid_min <- max(grids[, 1])
-          grid_max <- min(grids[, M])
-        }
-        common_grid <- seq(grid_min, grid_max, length.out = M)
-      }
-    }
-    common_grid
-  })
-  common_grids <- do.call(rbind, common_grids)
-
-  original_curves <- res$y
-  aligned_curves <- original_curves
-  for (l in 1:L) {
-    for (n in 1:N) {
-      aligned_curves[n, l, ] <- stats::approx(
-        x = res$x_final[n, ],
-        y = original_curves[n, l, ],
-        xout = common_grids[res$labels[n], ]
-      )$y
-      original_curves[n, l, ] <- stats::approx(
-        x = res$x[n, ],
-        y = original_curves[n, l, ],
-        xout = common_grids[res$labels[n], ]
-      )$y
-    }
-  }
-
-  centers <- res$y_centers_final
-  for (l in 1:L) {
-    for (k in 1:res$n_clust_final) {
-      centers[k, l, ] <- stats::approx(
-        x = res$x_centers_final[k, ],
-        y = res$y_centers_final[k, l, ],
-        xout = common_grids[k, ]
-      )$y
-    }
-  }
-
-  if (expand_domain) {
-    # Mean imputation
-    for (l in 1:L) {
-      X <- aligned_curves[, l, ]
-      Xc <- centers[, l, ]
-      if (n_clusters == 1) Xc <- matrix(Xc, nrow = 1)
-      X <- rbind(X, Xc)
-      Xi <- impute_via_mean(X, c(res$labels, 1:n_clusters))
-      aligned_curves[, l, ] <- Xi[1:N, ]
-      centers[, l, ] <- Xi[(N + 1):nrow(Xi), ]
-    }
-  }
-
-  warpings <- matrix(nrow = N, ncol = M)
-  if (warping_class == "none") {
-    for (n in 1:N)
-      warpings[n, ] <- common_grids[res$labels[n], ]
-  } else {
-    for (n in 1:N) {
-      if (warping_class == "shift")
-        warpings[n, ] <- common_grids[res$labels[n], ] + res$parameters[n, 1]
-      else if (warping_class == "dilation")
-        warpings[n, ] <- common_grids[res$labels[n], ] * res$parameters[n, 1]
-      else
-        warpings[n, ] <- common_grids[res$labels[n], ] * res$parameters[n, 1] +
-          res$parameters[n, 2]
-    }
-  }
-
   silhouettes <- NULL
   if (n_clusters > 1 && add_silhouettes) {
     D <- fdadist(
@@ -500,11 +423,11 @@ fdakmeans <- function(x, y = NULL,
   }
 
   out <- list(
-    original_curves = original_curves,
-    aligned_curves = aligned_curves,
-    center_curves = centers,
-    warpings = warpings,
-    grids = common_grids,
+    original_curves = res$y,
+    original_grids = res$x,
+    aligned_grids = res$x_final,
+    center_curves = res$y_centers_final,
+    center_grids = res$x_centers_final,
     n_clusters = res$n_clust_final,
     memberships = res$labels,
     distances_to_center = res$final_dissimilarity,
@@ -512,8 +435,8 @@ fdakmeans <- function(x, y = NULL,
     amplitude_variation = res$amplitude_variation,
     total_variation = res$total_variation,
     n_iterations = res$iterations,
-    call_name = call_name,
-    call_args = call_args
+    call_name = callname,
+    call_args = callargs
   )
 
   as_caps(out)
