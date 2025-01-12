@@ -1,8 +1,39 @@
+# fdacluster 0.4.0
+
+## Major features
+
+* Expanded arguments of `fdakmeans()` to allow for more control over the type of 
+input functional data:
+  - `is_domain_interval` allows one to state if all curves are defined on the 
+  same fixed interval;
+  - `transformation` specifies the transformation to be applied to the data 
+  before clustering.
+  - `check_option_compatibility()` handles errors when incompatible 
+  options are selected.
+* Created two separate C++ classes for $L^2$ distance and normalized $L^2$ 
+distance; the former cannot be used in combination with dilation or affine 
+warping classes because it is not invariant to these transformations.
+
+## Minor improvements and bug fixes
+
+* Integrated distances in C++ classes are now computed via `arma::trapz()`.
+* Added talk given at *Rencontres R 2023* in Avignon, France to the News section 
+of the website.
+* Reduced number of dependencies: removed dplyr, forcats, tidyr, purrr.
+* Replaced furrr dependency in favor of future.apply to further reduce number of
+dependencies.
+* Updated `README` file.
+* Updated GHA workflows.
+* Updated vignettes.
+* Bug fixes.
+
 # fdacluster 0.3.0
 
 * Added median centroid type;
-* Median and mean centroid types are now defined on the union of individual grids;
-* Simplified `caps` class to avoid storing objects multiple times under different names;
+* Median and mean centroid types are now defined on the union of individual
+grids;
+* Simplified `caps` class to avoid storing objects multiple times under
+different names;
 * Added vignette on initialization strategies for k-means;
 * Added article on use case about the Berkeley growth study;
 * Added article on supported input formats.

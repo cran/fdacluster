@@ -50,14 +50,16 @@
 #' plot(sim30_mcaps, validation_criterion = "silhouette", what = "distribution")
 compare_caps <- function(x, y,
                          n_clusters = 1:5,
-                         metric = c("l2", "pearson"),
+                         is_domain_interval = FALSE,
+                         transformation = c("identity", "srsf"),
+                         metric = c("l2", "normalized_l2", "pearson"),
                          clustering_method = c("kmeans",
                                                "hclust-complete",
                                                "hclust-average",
                                                "hclust-single",
                                                "dbscan"),
-                         warping_class = c("affine", "dilation", "none",
-                                           "shift", "srsf"),
+                         warping_class = c("none", "shift", "dilation",
+                                           "affine", "bpd"),
                          centroid_type = c("mean", "medoid", "median",
                                            "lowess", "poly"),
                          cluster_on_phase = FALSE) {
@@ -65,64 +67,77 @@ compare_caps <- function(x, y,
     cli::cli_abort("The argument {.arg n_clusters} should be an integer/numeric vector.")
   if (length(n_clusters) == 1 && n_clusters == 1)
     cli::cli_abort("It does not make sense to only create a partition with all the data.")
+
+  transformation <- rlang::arg_match(transformation)
   metric <- rlang::arg_match(metric)
+
   clustering_method <- rlang::arg_match(clustering_method, multiple = TRUE)
   warping_class <- rlang::arg_match(warping_class, multiple = TRUE)
   centroid_type <- rlang::arg_match(centroid_type, multiple = TRUE)
 
-  df <- tidyr::expand_grid(
+  df <- expand.grid(
     n_clusters = n_clusters,
     clustering_method = clustering_method,
     warping_class = warping_class,
-    centroid_type = centroid_type
-  ) |>
-    dplyr::filter(!(n_clusters > min(n_clusters) & clustering_method == "dbscan")) |>
-    dplyr::mutate(
-      caps_obj = purrr::pmap(
-        .l = list(
-          .data$n_clusters, .data$clustering_method,
-          .data$warping_class, .data$centroid_type
-        ),
-        .f = \(.n_clusters, .clustering_method, .warping_class, .centroid_type) {
-          if (.clustering_method == "kmeans")
-            fdakmeans(
-              x = x,
-              y = y,
-              n_clusters = .n_clusters,
-              seeding_strategy = "exhaustive-kmeans++",
-              warping_class = .warping_class,
-              centroid_type = .centroid_type,
-              metric = metric,
-              cluster_on_phase = cluster_on_phase,
-              use_verbose = FALSE
-            )
-          else if (.clustering_method == "dbscan")
-            fdadbscan(
-              x = x,
-              y = y,
-              warping_class = .warping_class,
-              centroid_type = .centroid_type,
-              metric = metric,
-              cluster_on_phase = cluster_on_phase,
-              use_verbose = FALSE
-            )
-          else {
-            linkage_criterion <- strsplit(.clustering_method, split = "-")[[1]][2]
-            fdahclust(
-              x = x,
-              y = y,
-              n_clusters = .n_clusters,
-              warping_class = .warping_class,
-              centroid_type = .centroid_type,
-              metric = metric,
-              linkage_criterion = linkage_criterion,
-              cluster_on_phase = cluster_on_phase,
-              use_verbose = FALSE
-            )
-          }
-        }
-      )
-    )
+    centroid_type = centroid_type,
+    stringsAsFactors = FALSE
+  )
+  df <- subset(df, sapply(df$warping_class, \(.warping_class) {
+    .check_option_compatibility(
+      is_domain_interval = is_domain_interval,
+      transformation = transformation,
+      warping_class = .warping_class,
+      metric = metric)
+  }) == 0)
+  df <- subset(df, !(df$n_clusters > min(df$n_clusters) &
+                       df$clustering_method == "dbscan"))
+  df <- tibble::as_tibble(df)
+
+  df$caps_obj <- mapply(
+    .n_clusters = df$n_clusters,
+    .clustering_method = df$clustering_method,
+    .warping_class = df$warping_class,
+    .centroid_type = df$centroid_type,
+    FUN = \(.n_clusters, .clustering_method, .warping_class, .centroid_type) {
+      if (.clustering_method == "kmeans")
+        fdakmeans(
+          x = x,
+          y = y,
+          n_clusters = .n_clusters,
+          seeding_strategy = "exhaustive-kmeans++",
+          warping_class = .warping_class,
+          centroid_type = .centroid_type,
+          metric = metric,
+          cluster_on_phase = cluster_on_phase,
+          use_verbose = FALSE
+        )
+      else if (.clustering_method == "dbscan")
+        fdadbscan(
+          x = x,
+          y = y,
+          warping_class = .warping_class,
+          centroid_type = .centroid_type,
+          metric = metric,
+          cluster_on_phase = cluster_on_phase,
+          use_verbose = FALSE
+        )
+      else {
+        linkage_criterion <- strsplit(.clustering_method, split = "-")[[1]][2]
+        fdahclust(
+          x = x,
+          y = y,
+          n_clusters = .n_clusters,
+          warping_class = .warping_class,
+          centroid_type = .centroid_type,
+          metric = metric,
+          linkage_criterion = linkage_criterion,
+          cluster_on_phase = cluster_on_phase,
+          use_verbose = FALSE
+        )
+      }
+    },
+    SIMPLIFY = FALSE
+  )
 
   class(df) <- c("mcaps", class(df))
   df
@@ -157,23 +172,25 @@ autoplot.mcaps <- function(object,
   validation_criterion <- rlang::arg_match(validation_criterion)
   what <- rlang::arg_match(what)
 
+  df <- object
+  df[["Number of clusters"]] <- as.factor(df$n_clusters)
   if (validation_criterion == "wss") {
-    df <- object |>
-      dplyr::mutate(
-        `Number of clusters` = as.factor(.data$n_clusters),
-        value = purrr::map(.data$caps_obj, "distances_to_center")
-      ) |>
-      dplyr::select(-"caps_obj") |>
-      tidyr::unnest(cols = "value") |>
-      dplyr::filter(.data$value != 0)
+    df$value <- lapply(df$caps_obj, \(.x) .x$distances_to_center)
   } else {
-    df <- object |>
-      dplyr::mutate(
-        `Number of clusters` = as.factor(.data$n_clusters),
-        value = purrr::map(.data$caps_obj, "silhouettes")
-      ) |>
-      dplyr::select(-"caps_obj") |>
-      tidyr::unnest(cols = "value")
+    df$value <- lapply(df$caps_obj, \(.x) .x$silhouettes)
+  }
+  df$caps_obj <- NULL
+  df <- unnest(df, cols = "value")
+
+  if (validation_criterion == "wss") {
+    df <- subset(df, df$value != 0)
+  }
+
+  if (what == "mean") {
+    df <- stats::aggregate(
+      value ~ `Number of clusters` + clustering_method + warping_class +
+        centroid_type, data = df, FUN = mean
+    )
   }
 
   if (what == "distribution") {
@@ -191,13 +208,6 @@ autoplot.mcaps <- function(object,
       )
   } else {
     p <- df |>
-      dplyr::group_by(
-        .data$`Number of clusters`,
-        .data$clustering_method,
-        .data$warping_class,
-        .data$centroid_type) |>
-      dplyr::summarise(value = mean(.data$value)) |>
-      dplyr::ungroup() |>
       ggplot2::ggplot(ggplot2::aes(
         x = .data$`Number of clusters`,
         y = .data$value,

@@ -103,7 +103,7 @@ check_centroid_type <- function(x) {
   cli::cli_abort("The input argument {.arg centroid_type} should be one of {.code mean}, {.code medoid}, {.code lowessXX} or {.code polyXX}.")
 }
 
-format_inputs <- function(x, y = NULL) {
+format_inputs <- function(x, y = NULL, is_domain_interval = FALSE) {
   # Here x is N x M and y is N x L x M when provided
   if (is.null(y) && rlang::is_installed("funData")) {
     if (inherits(x, "funData")) {
@@ -123,21 +123,21 @@ format_inputs <- function(x, y = NULL) {
       L <- 1
       N <- length(x@argvals)
       M <- x@argvals |>
-        purrr::map_int(length) |>
+        sapply(length) |>
         mean() |>
         round()
       y <- array(dim = c(N, L, M))
       y[, 1, ] <- x@X |>
-        purrr::imap(\(values, id) stats::approx(x@argvals[[id]], values, n = M)$y) |>
+        imap(\(values, id) stats::approx(x@argvals[[id]], values, n = M)$y) |>
         do.call(rbind, args = _)
       x <- x@argvals |>
-        purrr::map(\(grid) seq(min(grid), max(grid), length.out = M)) |>
+        lapply(\(grid) seq(min(grid), max(grid), length.out = M)) |>
         do.call(rbind, args = _)
     } else if (inherits(x, "multiFunData")) {
       L <- length(x)
       dims <- dim(x[[1]]@X)
       grid <- x[[1]]@argvals[[1]]
-      purrr::walk(x, \(fData) {
+      lapply(x, \(fData) {
         if (length(fData@argvals) != 1)
           cli::cli_abort(c(
             "The {.pkg fdacluster} package does not support functional data ",
@@ -166,7 +166,7 @@ format_inputs <- function(x, y = NULL) {
         "{.cls multiFunData}."
       ))
   } else if (rlang::is_installed("fda") && inherits(y, "fd")) {
-    dims <- purrr::map_int(y$fdnames, length)
+    dims <- sapply(y$fdnames, length)
     M <- dims[1]
     N <- dims[2]
     L <- dims[3]
@@ -219,8 +219,51 @@ format_inputs <- function(x, y = NULL) {
   if (anyNA(y))
     cli::cli_abort("The input argument {.arg y} should not contain non-finite values.")
 
+  # Check if sample defined on a common interval
+  lower_bound <- min(x[, 1])
+  upper_bound <- max(x[, M])
+  are_domains_equal <- all(x[, 1] == lower_bound) && all(x[, M] == upper_bound)
+  if (is_domain_interval && !are_domains_equal)
+    cli::cli_abort("The functional data are not defined on a common interval but argument {.arg is_domain_interval} specifies that they are.")
+  if (is_domain_interval) {
+    common_grid <- seq(lower_bound, upper_bound, length.out = M)
+    for (i in 1:N) {
+      for (l in 1:L) {
+        y[i, l, ] <- stats::approx(x[i, ], y[i, l, ], xout = common_grid)$y
+      }
+      x[i, ] <- common_grid
+    }
+  }
+
   # output x matrix NxM and y array NxLxM
   list(x = x, y = y)
+}
+
+check_option_compatibility <- function(is_domain_interval, transformation, warping_class, metric) {
+  out <- .check_option_compatibility(is_domain_interval, transformation, warping_class, metric)
+  if (out == 1L)
+    cli::cli_abort("The functional domain is an interval. The only available transformation is the SRSF transformation.")
+  if (out == 2L)
+    cli::cli_abort('The functional domain is an interval. The only available warping classes are {.code "none"} and {.code "bpd"}.')
+  if (out == 3L)
+    cli::cli_abort("The only metric invariant by boundary-preserving diffeomorphisms is the L2 metric.")
+
+  if (out == 4L)
+    cli::cli_abort("It does not make sense to use boundary-preserving diffeomorphisms for aligning curves defined on the real line.")
+  if (out == 5L)
+    cli::cli_abort("The L2 metric is neither dilation-invariant nor affine-invariant.")
+}
+
+.check_option_compatibility <- function(is_domain_interval, transformation, warping_class, metric) {
+  if (is_domain_interval) {
+    if (transformation != "srsf") return(1)
+    if (warping_class != "none" && warping_class != "bpd") return(2)
+    if (warping_class == "bpd" && metric != "l2") return(3)
+  } else {
+    if (warping_class == "bpd") return(4)
+    if ((warping_class == "dilation" || warping_class == "affine") && metric == "l2") return(5)
+  }
+  0
 }
 
 remove_missing_points <- function(grids, curves) {
@@ -240,4 +283,93 @@ remove_missing_points <- function(grids, curves) {
       out_curves[n, l, ] <- stats::approx(grids[n, ], curves[n, l, ], xout = tout)$y
   }
   list(grids = out_grids, curves = out_curves)
+}
+
+unnest_string <- function(x, cols) {
+  times <- lengths(x[[cols[1]]])
+  if (length(cols) > 1) {
+    for (i in 2:length(cols)) {
+      if (!all(lengths(x[[cols[i]]]) == times)) {
+        cli::cli_abort("All columns in the dataset must have the same length.")
+      }
+    }
+  }
+
+  base_names <- names(x)[!(names(x) %in% cols)]
+  out <- lapply(base_names, \(.base_name) {
+    do.call(c, mapply(\(.x, .times) {
+      is_factor <- is.factor(.x)
+      if (is_factor) {
+        lvls <- levels(.x)
+        .x <- as.character(.x)
+      }
+      if (is.character(.x)) {
+        if (length(.x) == 1) {
+          out <- rep(.x, .times)
+          if (is_factor) {
+            out <- factor(out, levels = lvls)
+          }
+          return(out)
+        }
+        out <- replicate(.times, .x, simplify = FALSE)
+        if (is_factor) {
+          out <- lapply(out, \(.out) factor(.out, levels = lvls))
+        }
+        return(out)
+      }
+      mat <- tcrossprod(rep(1, .times), .x)
+      if (ncol(mat) == 1) {
+        return(rep(.x, .times))
+      }
+      out <- lapply(seq_len(nrow(mat)), \(i) mat[i, ])
+    }, x[[.base_name]], times, SIMPLIFY = FALSE))
+  })
+  names(out) <- base_names
+  out <- tibble::as_tibble(out)
+  for (col in cols) {
+    out[[col]] <- unlist(x[[col]])
+  }
+  out
+}
+
+unnest <- function(x, ...) {
+  cols <- rlang::enquos(...)
+  cols <- sapply(cols, \(x) rlang::as_name(x))
+  unnest_string(x, cols)
+}
+
+matrix_tree <- function(x, margin = 1) {
+  if (margin == 1) {
+    return(lapply(seq_len(nrow(x)), \(i) x[i, ]))
+  }
+  lapply(seq_len(ncol(x)), \(i) x[, i])
+}
+
+imap <- function(.x, .f, ...) {
+  mapply(.f, .x, seq_along(.x), ..., SIMPLIFY = FALSE)
+}
+
+future_map2_dbl <- function(.x, .y, .f, ...,
+                            future_envir = parent.frame(),
+                            future_stdout = TRUE,
+                            future_confitions = "condition",
+                            future_globals = TRUE,
+                            future_packages = NULL,
+                            future_scheduling = 1,
+                            future_chunk_size = NULL,
+                            future_label = "future_mapply-%d") {
+  future.apply::future_mapply(
+    FUN = .f, .x, .y,
+    MoreArgs = rlang::list2(...),
+    SIMPLIFY = TRUE,
+    future.envir = future_envir,
+    future.stdout = future_stdout,
+    future.conditions = future_confitions,
+    future.globals = future_globals,
+    future.packages = future_packages,
+    future.seed = TRUE,
+    future.scheduling = future_scheduling,
+    future.chunk.size = future_chunk_size,
+    future.label = future_label
+  )
 }
