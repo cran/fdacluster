@@ -4,7 +4,7 @@ knitr::opts_chunk$set(
   comment = "#>"
 )
 
-load("../R/sysdata.rda")
+load("berkeley-growth-data.RData")
 
 library(fdacluster)
 library(ggplot2)
@@ -18,35 +18,43 @@ unnest_string <- function(x, cols) {
       }
     }
   }
-  
+
   base_names <- names(x)[!(names(x) %in% cols)]
   out <- lapply(base_names, \(.base_name) {
-    do.call(c, mapply(\(.x, .times) {
-      is_factor <- is.factor(.x)
-      if (is_factor) {
-        lvls <- levels(.x)
-        .x <- as.character(.x)
-      }
-      if (is.character(.x)) {
-        if (length(.x) == 1) {
-          out <- rep(.x, .times)
+    do.call(
+      c,
+      mapply(
+        \(.x, .times) {
+          is_factor <- is.factor(.x)
           if (is_factor) {
-            out <- factor(out, levels = lvls)
+            lvls <- levels(.x)
+            .x <- as.character(.x)
           }
-          return(out)
-        }
-        out <- replicate(.times, .x, simplify = FALSE)
-        if (is_factor) {
-          out <- lapply(out, \(.out) factor(.out, levels = lvls))
-        }
-        return(out)
-      }
-      mat <- tcrossprod(rep(1, .times), .x)
-      if (ncol(mat) == 1) {
-        return(rep(.x, .times))
-      }
-      out <- lapply(seq_len(nrow(mat)), \(i) mat[i, ])
-    }, x[[.base_name]], times, SIMPLIFY = FALSE))
+          if (is.character(.x)) {
+            if (length(.x) == 1) {
+              out <- rep(.x, .times)
+              if (is_factor) {
+                out <- factor(out, levels = lvls)
+              }
+              return(out)
+            }
+            out <- replicate(.times, .x, simplify = FALSE)
+            if (is_factor) {
+              out <- lapply(out, \(.out) factor(.out, levels = lvls))
+            }
+            return(out)
+          }
+          mat <- tcrossprod(rep(1, .times), .x)
+          if (ncol(mat) == 1) {
+            return(rep(.x, .times))
+          }
+          out <- lapply(seq_len(nrow(mat)), \(i) mat[i, ])
+        },
+        x[[.base_name]],
+        times,
+        SIMPLIFY = FALSE
+      )
+    )
   })
   names(out) <- base_names
   out <- tibble::as_tibble(out)
@@ -69,12 +77,13 @@ matrix_tree <- function(x, margin = 1) {
   lapply(seq_len(ncol(x)), \(i) x[, i])
 }
 
-## ----fig.width=7, fig.retina=2------------------------------------------------
-growth <- fda::growth
+## -----------------------------------------------------------------------------
 mb <- as.factor(c(
-  rep("male", dim(growth$hgtm)[2]), 
+  rep("male", dim(growth$hgtm)[2]),
   rep("female", dim(growth$hgtf)[2])
 ))
+
+## ----fig.width=7, fig.retina=2, eval = requireNamespace("fda", quietly = TRUE)----
 N <- length(mb)
 x <- growth$age
 M <- length(x)
@@ -84,8 +93,8 @@ tibble::tibble(
   Height = matrix_tree(y0, margin = 2),
   Gender = mb,
   CurveID = 1:N
-) |> 
-  unnest(Age, Height) |> 
+) |>
+  unnest(Age, Height) |>
   ggplot(aes(Age, Height, color = Gender, group = CurveID)) +
   geom_point() +
   geom_line() +
@@ -96,7 +105,7 @@ tibble::tibble(
     y = "Height (cm)"
   )
 
-## -----------------------------------------------------------------------------
+## ----eval = requireNamespace("fda", quietly = TRUE)---------------------------
 basisobj <- fda::create.bspline.basis(rangeval = range(x), nbasis = 15)
 fd_vals <- lapply(1:N, \(n) {
   yobs <- y0[, n]
@@ -108,10 +117,16 @@ fd_vals <- lapply(1:N, \(n) {
     out$gcv
   }
   lambda_opt <- stats::optimise(cost, c(1e-8, 1))$minimum
-  if (lambda_opt <= 1e-8)
-    cli::cli_alert_warning("The optimal penalty has reached the lower bound (1e-8) for curve #{n}.")
-  if (lambda_opt >= 1)
-    cli::cli_alert_warning("The optimal penalty has reached the upper bound (1) for curve #{n}.")
+  if (lambda_opt <= 1e-8) {
+    cli::cli_alert_warning(
+      "The optimal penalty has reached the lower bound (1e-8) for curve #{n}."
+    )
+  }
+  if (lambda_opt >= 1) {
+    cli::cli_alert_warning(
+      "The optimal penalty has reached the upper bound (1) for curve #{n}."
+    )
+  }
   yfdPar <- fda::fdPar(yfd, 2, lambda_opt)
   fda::smooth.fd(yfd, yfdPar)
 })
@@ -122,26 +137,26 @@ fd <- fda::fd(
   basisobj = basisobj
 )
 
-## ----fig.width=7, fig.retina=2------------------------------------------------
+## ----fig.width=7, fig.retina=2, eval = requireNamespace("fda", quietly = TRUE)----
 y0 <- fda::eval.fd(x, fd, 0)
 tibble::tibble(
   Age = replicate(N, x, simplify = FALSE),
   Height = matrix_tree(y0, margin = 2),
   Gender = mb,
   CurveID = 1:N
-) |> 
-  unnest(Age, Height) |> 
-  ggplot(aes(Age, Height, color = Gender, group = CurveID)) + 
-  geom_point() + 
+) |>
+  unnest(Age, Height) |>
+  ggplot(aes(Age, Height, color = Gender, group = CurveID)) +
+  geom_point() +
   geom_line() +
-  theme_bw() + 
+  theme_bw() +
   labs(
-    title = "Heights of 39 boys and 54 girls from age 1 to 18", 
-    x = "Age (years)", 
+    title = "Heights of 39 boys and 54 girls from age 1 to 18",
+    x = "Age (years)",
     y = "Height (cm)"
   )
 
-## ----fig.width=7, fig.retina=2------------------------------------------------
+## ----fig.width=7, fig.retina=2, eval = requireNamespace("fda", quietly = TRUE)----
 y1 <- fda::eval.fd(x, fd, 1)
 tibble::tibble(
   Age = replicate(N, x, simplify = FALSE),
@@ -205,7 +220,7 @@ plot(growth_caps, type = "phase")
 diagnostic_plot(growth_caps)
 
 ## -----------------------------------------------------------------------------
-table(growth_caps$memberships, mb) |> 
-  `rownames<-`(c("Group 1", "Group 2")) |> 
+table(growth_caps$memberships, mb) |>
+  `rownames<-`(c("Group 1", "Group 2")) |>
   knitr::kable()
 
